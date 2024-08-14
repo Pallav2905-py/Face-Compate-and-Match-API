@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from deepface import DeepFace
 from PIL import Image
 import io
+# from tensorflow.keras.layers import LocallyConnected2D
 
 from flask_cors import CORS, cross_origin
 
@@ -16,7 +17,6 @@ def verify():
         img2 = request.files["image2"]
         backend = request.form.get("backend", "ssd")  # Default to 'ssd' if not provided
 
-        # Convert the images to a format that DeepFace can use (e.g., numpy arrays)
         img1 = Image.open(io.BytesIO(img1.read()))
         img2 = Image.open(io.BytesIO(img2.read()))
 
