@@ -1,37 +1,38 @@
 from flask import Flask, request, jsonify
 from deepface import DeepFace
-from PIL import Image
-import io
-# from tensorflow.keras.layers import LocallyConnected2D
-
-from flask_cors import CORS, cross_origin
+import cv2
+import numpy as np
 
 app = Flask(__name__)
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
-@app.route("/verify", methods=["POST"])
+
+def read_image(file):
+    # Read the image file as a numpy array
+    image = np.frombuffer(file.read(), np.uint8)
+    # Decode the numpy array to an image
+    img = cv2.imdecode(image, cv2.IMREAD_COLOR)
+    return img
+
+@app.route('/verify', methods=['POST'])
 def verify():
-    try:
-        # Get the image files from the request
-        img1 = request.files["image1"]
-        img2 = request.files["image2"]
-        backend = request.form.get("backend", "ssd")  # Default to 'ssd' if not provided
+    if 'img1' not in request.files or 'img2' not in request.files:
+        return jsonify({"error": "Please provide both img1 and img2 files"}), 400
+    
+    # Get the image files from the request
+    img1_file = request.files['img1']
+    img2_file = request.files['img2']
+    
+    # Convert the image files to OpenCV format
+    img1 = read_image(img1_file)
+    img2 = read_image(img2_file)
+    
+    # Perform face verification using DeepFace
+    result = DeepFace.verify(img1_path=img1, img2_path=img2, detector_backend='opencv')
+    
+    # Convert numpy bool_ to native Python bool for JSON serialization
+    result['verified'] = bool(result['verified'])
+    
+    # Return the result as a JSON response
+    return jsonify(result)
 
-        img1 = Image.open(io.BytesIO(img1.read()))
-        img2 = Image.open(io.BytesIO(img2.read()))
-
-        # Perform face verification
-        result = DeepFace.verify(
-            img1_path=img1, img2_path=img2, detector_backend=backend
-        )
-
-        return jsonify(result), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route("/")
-def hello():
-    return jsonify("Server is Running.")
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
